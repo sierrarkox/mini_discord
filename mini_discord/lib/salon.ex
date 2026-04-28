@@ -17,7 +17,7 @@ defmodule MiniDiscord.Salon do
 
   def handle_call({:rejoindre, pid}, _from, state) do
     Process.monitor(pid)
-    Enum.each(state.historique,fn (msg) -> send(pid,{:message, msg}) end)
+    Enum.each(Enum.reverse(state.historique),fn (msg) -> send(pid,{:message, msg}) end)
     {:reply, :ok, %{state | clients: [pid | state.clients]}}
   end
 
@@ -26,10 +26,9 @@ defmodule MiniDiscord.Salon do
   end
 
   def handle_cast({:broadcast, msg}, state) do
-    state.historique = %{{:message, msg} | state.historique}
-    Enum.take(state.historique, 10)
-    Enum.each(state.clients,fn (client) -> send(client,{:message, msg}) end)
-    {:noreply, state}
+    n_state = %{state | historique: [msg | state.historique] |> Enum.take(10)}
+    Enum.each(n_state.clients,fn (client) -> send(client,{:message, msg}) end)
+    {:noreply, n_state}
   end
 
   def handle_info({:DOWN, _ref, :process, pid, _reason}, state) do
